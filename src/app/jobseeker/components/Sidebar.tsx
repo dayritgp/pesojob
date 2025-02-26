@@ -73,7 +73,7 @@ const Sidebar = () => {
           </Link>
 
           <Link
-            href="/find/company"
+            href="/jobseeker/find-companies"
             className="flex items-center h-10 px-3 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-colors"
           >
             <Building2 size={20} />

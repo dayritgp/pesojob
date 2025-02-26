@@ -11,40 +11,58 @@ async function connectToDB() {
   });
 }
 
-// GET: Fetch job posts
+// GET: Fetch all job posts
 export async function GET() {
   let db;
   try {
     db = await connectToDB();
     const [rows]: [any[], any] = await db.execute("SELECT * FROM job_posts ORDER BY created_at DESC");
     return NextResponse.json(rows, { status: 200 });
-  } catch (error) {
-    console.error("Database error:", error);
-    return NextResponse.json({ error: "Failed to fetch job posts" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Database error (GET):", error);
+    return NextResponse.json({ error: "Failed to fetch job posts", details: error.message }, { status: 500 });
   } finally {
     if (db) await db.end();
   }
 }
 
-// POST: Add a new job post with notification
+// POST: Add a new job post & create notification
 export async function POST(req: Request) {
   let db;
   try {
-    const { position, location, salary, description } = await req.json();
+    const body = await req.json();
+    let { job_position, job_location, salary, job_type, skill_level, job_description, requirements } = body;
 
-    // Validate required fields
-    if (!position || !location) {
-      return NextResponse.json({ error: "Position and Location are required!" }, { status: 400 });
+    if (!job_position || !job_location || !job_type || !skill_level) {
+      return NextResponse.json({ error: "Required fields are missing!" }, { status: 400 });
+    }
+
+    if (!salary || isNaN(parseFloat(salary))) {
+      salary = null;
     }
 
     db = await connectToDB();
-    await db.execute(
-      "INSERT INTO job_posts (position, location, salary, description, created_at) VALUES (?, ?, ?, ?, NOW())",
-      [position, location, salary || null, description || null]
+
+    // Insert job post
+    const [result]: any = await db.execute(
+      `INSERT INTO job_posts 
+      (job_position, job_location, salary, job_type, skill_level, job_description, requirements, created_at) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [job_position, job_location, salary, job_type, skill_level, job_description || null, requirements || null]
     );
 
-    // Fetch the newly inserted job post
+    if (result.affectedRows === 0) {
+      throw new Error("Insert failed, no rows affected.");
+    }
+
     const [newJob]: [any[], any] = await db.execute("SELECT * FROM job_posts WHERE id = LAST_INSERT_ID()");
+
+    // Insert notification
+    const notificationMessage = `New job posted: ${job_position} in ${job_location}`;
+    await db.execute(
+      `INSERT INTO notifications (message, created_at) VALUES (?, NOW())`,
+      [notificationMessage]
+    );
 
     return NextResponse.json(
       {
@@ -53,9 +71,9 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error("Database error:", error);
-    return NextResponse.json({ error: "Failed to post job" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Database error (POST):", error);
+    return NextResponse.json({ error: "Failed to post job", details: error.message }, { status: 500 });
   } finally {
     if (db) await db.end();
   }
