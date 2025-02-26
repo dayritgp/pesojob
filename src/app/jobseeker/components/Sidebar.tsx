@@ -81,7 +81,7 @@ const Sidebar = () => {
           </Link>
 
           <Link
-            href="/applications"
+            href="/jobseeker/my-applications"
             className="flex items-center h-10 px-3 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-colors"
           >
             <ClipboardList size={20} />
